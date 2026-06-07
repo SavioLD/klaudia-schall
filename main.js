@@ -21,6 +21,26 @@
     initMobileNav();
     initReveal();
     initLeadForm();
+    initSimpleForm({
+      formId: 'partnerForm',
+      errorId: 'partnerError',
+      cardId: 'partner-form',
+      required: ['status', 'einkommen', 'zeit', 'vorname', 'nachname', 'email', 'telefon', 'consent'],
+      labels: {
+        status: 'Aktuelle Tätigkeit',
+        einkommen: 'Wunsch-Zusatzverdienst',
+        zeit: 'Zeit pro Woche',
+        erfahrung: 'Erfahrung Vertrieb/Beratung',
+        vorname: 'Vorname',
+        nachname: 'Nachname',
+        email: 'E-Mail',
+        telefon: 'Telefon',
+        nachricht: 'Nachricht'
+      },
+      subject: 'Neue Partner-Anfrage · klaudia-schall.de',
+      fromName: 'Website Klaudia Schall – Partner',
+      successText: 'Danke für dein Interesse, Teil des Netzwerks zu werden! Klaudia meldet sich persönlich bei dir, um alles Weitere ganz unverbindlich zu besprechen.'
+    });
   });
 
   /* ---- Footer-Jahr ---- */
@@ -283,6 +303,103 @@
     });
 
     render();
+  }
+
+  /* =============================================================
+     EINSTUFIGES FORMULAR (z. B. Partner-/Recruiting-Anfrage)
+  ============================================================== */
+  function initSimpleForm(cfg) {
+    var form = document.getElementById(cfg.formId);
+    if (!form) return;
+    var errorEl = document.getElementById(cfg.errorId);
+    var card = document.getElementById(cfg.cardId);
+    var btn = form.querySelector('button[type="submit"]');
+
+    function setErr(message) {
+      if (!errorEl) return;
+      errorEl.textContent = message || '';
+      errorEl.classList.toggle('is-visible', !!message);
+    }
+
+    function validate() {
+      for (var i = 0; i < cfg.required.length; i++) {
+        var name = cfg.required[i];
+        var fields = form.querySelectorAll('[name="' + name + '"]');
+        if (!fields.length) continue;
+        var type = fields[0].type;
+        if (type === 'radio' || type === 'checkbox') {
+          var checked = Array.prototype.some.call(fields, function (f) { return f.checked; });
+          if (!checked) {
+            return name === 'consent'
+              ? 'Bitte stimme der Verarbeitung deiner Daten zu, damit wir dich kontaktieren dürfen.'
+              : 'Bitte triff noch eine Auswahl bei: ' + (cfg.labels[name] || name) + '.';
+          }
+        } else {
+          var empty = Array.prototype.filter.call(fields, function (f) { return !f.value.trim(); })[0];
+          if (empty) { empty.focus(); return 'Bitte fülle das Feld „' + (cfg.labels[name] || name) + '“ aus.'; }
+          if (fields[0].type === 'email' && (!fields[0].checkValidity() || !/.+@.+\..+/.test(fields[0].value))) {
+            fields[0].focus(); return 'Bitte gib eine gültige E-Mail-Adresse ein.';
+          }
+          if (fields[0].type === 'tel' && fields[0].value.replace(/[^0-9]/g, '').length < 6) {
+            fields[0].focus(); return 'Bitte gib eine gültige Telefonnummer an.';
+          }
+        }
+      }
+      return null;
+    }
+
+    function summary() {
+      var fd = new FormData(form);
+      var out = [];
+      Object.keys(cfg.labels).forEach(function (key) {
+        var vals = fd.getAll(key).map(function (v) { return String(v).trim(); }).filter(Boolean);
+        if (vals.length) out.push(cfg.labels[key] + ': ' + vals.join(', '));
+      });
+      return out.join('\n');
+    }
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var err = validate();
+      if (err) { setErr(err); return; }
+      setErr('');
+
+      var fd = new FormData(form);
+      var firstName = (fd.get('vorname') || '').toString().split(' ')[0];
+      fd.append('access_key', WEB3FORMS_ACCESS_KEY);
+      fd.append('subject', cfg.subject);
+      fd.append('from_name', cfg.fromName);
+      fd.append('zusammenfassung', summary());
+      fd.append('source', location.href);
+
+      var original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = 'Wird gesendet …';
+
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: fd
+      })
+        .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return { ok: res.ok, j: j }; }); })
+        .then(function (r) {
+          if (!r.ok || r.j.success === false) throw new Error('Submit failed');
+          if (card) {
+            card.innerHTML =
+              '<div class="form-success">' +
+                '<div class="form-success__icon"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg></div>' +
+                '<h3>Danke' + (firstName ? ', ' + escapeHtml(firstName) : '') + '!</h3>' +
+                '<p>' + cfg.successText + '</p>' +
+              '</div>';
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.innerHTML = original;
+          setErr('Das Senden hat leider nicht geklappt. Bitte versuche es erneut oder schreibe an ' + FALLBACK_CONTACT + '.');
+        });
+    });
   }
 
   function escapeHtml(s) {

@@ -453,6 +453,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .fstep__hint { color: var(--muted); margin-top: 8px; font-size: 15.5px; }
 .fstep__body { margin-top: 24px; }
 
+/* Partner-Formular (einstufig) */
+.partner-form-shell { margin-top: clamp(36px, 5vw, 56px); }
+.fhead { margin-bottom: 26px; }
+.fgroup { margin-bottom: 24px; }
+.fgroup > .form-label { margin-bottom: 12px; }
+
 /* Auswahl-Kacheln (Single / Multi) */
 .opt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .opt-grid--3 { grid-template-columns: repeat(3, 1fr); }
