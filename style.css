@@ -459,6 +459,15 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .fgroup { margin-bottom: 24px; }
 .fgroup > .form-label { margin-bottom: 12px; }
 
+/* Progressives Ausklappen (Partner-Formular) */
+.pstep.is-collapsed { display: none; }
+.pstep.is-revealing { animation: pstepIn .42s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes pstepIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pstep.is-revealing { animation: none; } }
+
 /* Auswahl-Kacheln (Single / Multi) */
 .opt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .opt-grid--3 { grid-template-columns: repeat(3, 1fr); }

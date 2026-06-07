@@ -41,6 +41,11 @@
       fromName: 'Website Klaudia Schall – Partner',
       successText: 'Danke für dein Interesse, Teil des Netzwerks zu werden! Klaudia meldet sich persönlich bei dir, um alles Weitere ganz unverbindlich zu besprechen.'
     });
+    initProgressiveForm('partnerForm', {
+      status: ['pstep-einkommen'],
+      einkommen: ['pstep-zeit'],
+      zeit: ['pstep-erfahrung', 'pstep-contact']
+    });
   });
 
   /* ---- Footer-Jahr ---- */
@@ -399,6 +404,45 @@
           btn.innerHTML = original;
           setErr('Das Senden hat leider nicht geklappt. Bitte versuche es erneut oder schreibe an ' + FALLBACK_CONTACT + '.');
         });
+    });
+  }
+
+  /* =============================================================
+     PROGRESSIVES FORMULAR – klappt Schritt für Schritt aus
+     chain: { feldName: [idDerNächstenGruppe, ...] }
+  ============================================================== */
+  function initProgressiveForm(formId, chain) {
+    var form = document.getElementById(formId);
+    if (!form) return;
+
+    // Alle Folge-Gruppen zunächst einklappen (Progressive Enhancement:
+    // ohne JS bleibt das komplette Formular sichtbar).
+    var targets = {};
+    Object.keys(chain).forEach(function (name) {
+      chain[name].forEach(function (id) { targets[id] = true; });
+    });
+    Object.keys(targets).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('is-collapsed');
+    });
+
+    function reveal(id, scroll) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.classList.contains('is-collapsed')) {
+        el.classList.remove('is-collapsed');
+        el.classList.add('is-revealing');
+        el.addEventListener('animationend', function () { el.classList.remove('is-revealing'); }, { once: true });
+      }
+      if (scroll) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    Object.keys(chain).forEach(function (name) {
+      form.querySelectorAll('[name="' + name + '"]').forEach(function (input) {
+        input.addEventListener('change', function () {
+          chain[name].forEach(function (id, i) { reveal(id, i === 0); });
+        });
+      });
     });
   }
 
