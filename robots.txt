@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://klaudia-schall.de/sitemap.xml
