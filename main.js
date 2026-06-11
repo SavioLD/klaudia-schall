@@ -16,6 +16,12 @@
   var LEAD_SUBJECT = 'Neue Schlafberatungs-Anfrage · klaudia-schall.de';
   var FALLBACK_CONTACT = 'klaudia.schall@web.de';
 
+  /* ThinkUp-Chat: Basis-URL des iframes. An diese URL werden die Formular-
+     Antworten als Query-Parameter angehängt, damit der Chat sie mit in die
+     Terminbuchung übernehmen kann (ThinkUp muss die Parameter auslesen). */
+  var CHAT_BASE = 'https://www.thinkupai.de/automatisierungen/Schall_iframe';
+  var CHAT_ORIGIN = 'https://www.thinkupai.de';
+
   document.addEventListener('DOMContentLoaded', function () {
     initYear();
     initMobileNav();
@@ -240,44 +246,59 @@
       return out;
     }
 
+    /* Übergibt die Antworten an den ThinkUp-Chat:
+       - als Query-Parameter an die iframe-URL (zuverlässig auslesbar)
+       - zusätzlich per postMessage an den Chat
+       - lokal gesichert in sessionStorage
+       ThinkUp muss diese Parameter in den Chat-Kontext + die Kalenderbuchung
+       übernehmen. Gesendete Parameter: vorname, nachname, email, telefon,
+       plz_ort, anliegen, schlafposition, matratze_alter, personen, zeitfenster,
+       kontaktweg, nachricht, kontext (lesbare Zusammenfassung), quelle. */
+    function handoffToChat(data) {
+      try { sessionStorage.setItem('ks_lead', JSON.stringify(data)); } catch (e) {}
+      var iframe = document.getElementById('assistentFrame');
+      if (!iframe) return;
+      var kontext = buildSummary();
+      var params = new URLSearchParams();
+      ['vorname', 'nachname', 'email', 'telefon', 'plz_ort', 'anliegen', 'schlafposition', 'matratze_alter', 'personen', 'zeitfenster', 'kontaktweg', 'nachricht'].forEach(function (k) {
+        if (data[k]) params.set(k, data[k]);
+      });
+      if (kontext) params.set('kontext', kontext);
+      params.set('quelle', 'anfrageformular');
+      iframe.src = CHAT_BASE + '?' + params.toString();
+      iframe.addEventListener('load', function () {
+        try {
+          iframe.contentWindow.postMessage({ source: 'klaudia-schall-form', type: 'lead', data: data, kontext: kontext }, CHAT_ORIGIN);
+        } catch (e) {}
+      }, { once: true });
+    }
+
     function submitForm() {
       var err = validateStep(steps[current]);
       if (err) { showError(err); return; }
       clearError();
 
-      var fd = new FormData(form);
-      fd.append('access_key', WEB3FORMS_ACCESS_KEY);
-      fd.append('subject', LEAD_SUBJECT);
-      fd.append('from_name', 'Website Klaudia Schall');
-      fd.append('zusammenfassung', buildSummary());
-      fd.append('source', location.href);
+      /* E-Mail-Backup an Klaudia – best effort, blockiert den Chat nicht */
+      try {
+        var fd = new FormData(form);
+        fd.append('access_key', WEB3FORMS_ACCESS_KEY);
+        fd.append('subject', LEAD_SUBJECT);
+        fd.append('from_name', 'Website Klaudia Schall');
+        fd.append('zusammenfassung', buildSummary());
+        fd.append('source', location.href);
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST', headers: { Accept: 'application/json' }, body: fd
+        }).catch(function () {});
+      } catch (e) {}
 
-      nextBtn.disabled = true;
-      if (prevBtn) prevBtn.disabled = true;
-      var original = nextBtn.innerHTML;
-      nextBtn.innerHTML = 'Wird gesendet …';
-
-      fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-        body: fd
-      })
-        .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return { ok: res.ok, j: j }; }); })
-        .then(function (r) {
-          if (!r.ok || r.j.success === false) { throw new Error(r.j.message || 'Submit failed'); }
-          showSuccess();
-        })
-        .catch(function () {
-          nextBtn.disabled = false;
-          if (prevBtn) prevBtn.disabled = false;
-          nextBtn.innerHTML = original;
-          showError('Das Senden hat leider nicht geklappt. Bitte versuche es erneut oder schreibe an ' + FALLBACK_CONTACT + '.');
-        });
+      /* Antworten speichern, an den Chat übergeben und dorthin wechseln */
+      showSuccess();
     }
 
     function showSuccess() {
       var data = collect();
       var name = (data.vorname || '').split(' ')[0] || '';
+      handoffToChat(data);
       var card = document.getElementById('formCard');
       if (!card) return;
       card.innerHTML =
