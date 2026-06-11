@@ -286,10 +286,16 @@
             '<svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>' +
           '</div>' +
           '<h3>Danke' + (name ? ', ' + escapeHtml(name) : '') + '!</h3>' +
-          '<p>Deine Anfrage ist angekommen. Klaudia meldet sich in der Regel innerhalb von 24&nbsp;Stunden persönlich bei dir – über deinen gewünschten Kontaktweg.</p>' +
-          (data.email ? '<p style="margin-top:8px;font-size:14px;">Bestätigung an <b>' + escapeHtml(data.email) + '</b></p>' : '') +
+          '<p>Deine Angaben sind bei Klaudia. <b>Buch dir jetzt direkt deinen Wunschtermin im Chat</b> – das dauert nur einen Moment.</p>' +
+          '<a href="#assistent" class="btn btn--accent btn--lg" style="margin-top:18px;">Zum Termin-Chat ' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></a>' +
         '</div>';
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var chat = document.getElementById('assistent');
+      if (chat) {
+        setTimeout(function () { chat.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 1400);
+      } else {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
 
     /* Auto-Advance bei Single-Choice (Radio) für schnelleren Flow */
